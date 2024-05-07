@@ -26,6 +26,7 @@ from pinnstorch.utils.utils import (
     get_metric_value,
     load_data,
     load_data_txt,
+    load_data_lid,
     task_wrapper,
     set_mode
 )

@@ -169,6 +169,21 @@ def load_data_txt(root_path, file_name):
 
     return np.float32(np.loadtxt(path, ndmin=2))
 
+def load_data_lid(root_path, file_name):
+    path = os.path.join(root_path, file_name)
+    if os.path.exists(path):
+        log.info("Weights are available.")
+
+    def load(filepath):
+        data = []
+        with open(filepath, 'r') as f:
+            d = f.readlines()
+            for i in range(9,len(d)):
+                line = np.array(d[i].rstrip().strip('\n').split(",")).astype(np.float32)
+                data.append(line)
+        return np.array(data).astype(np.float32)
+    
+    return load(path)
 
 def load_data(root_path, file_name):
     """Load data from a MATLAB .mat file, downloading it if not already present.

@@ -15,17 +15,40 @@ def read_data_fn(root_path):
     :return: Processed data in the form of a PointCloudData object.
     """
 
-    data = pinnstorch.utils.load_data(root_path, "cylinder_nektar_wake.mat")
-    x = data["X_star"][:, 0:1]  # N x 1
-    y = data["X_star"][:, 1:2]  # N x 1
-    t = data["t"]  # T x 1
-    U_star = data["U_star"]  # N x 2 x T
-    exact_u = U_star[:, 0, :]  # N x T
-    exact_v = U_star[:, 1, :]  # N x T
-    exact_p = data["p_star"]  # N x T
+    # data = pinnstorch.utils.load_data(root_path, "cylinder_nektar_wake.mat")
+    # x = data["X_star"][:, 0:1]  # N x 1
+    
+    # y = data["X_star"][:, 1:2]  # N x 1
+    # t = data["t"]  # T x 1
+    # U_star = data["U_star"]  # N x 2 x T
+    # exact_u = U_star[:, 0, :]  # N x T
+    # exact_v = U_star[:, 1, :]  # N x T
+    # exact_p = data["p_star"]  # N x T
+    # return pinnstorch.data.PointCloudData(
+    #     spatial=[x, y], time=[t], solution={"u": exact_u, "v": exact_v, "p": exact_p}
+    # )
+
+    p = pinnstorch.utils.load_data_lid(root_path, "[lid_driven_cavity]_[Re=9000]_[0,50,0.1]_p.txt")
+    u = pinnstorch.utils.load_data_lid(root_path, "[lid_driven_cavity]_[Re=9000]_[0,50,0.1]_u.txt")
+    v = pinnstorch.utils.load_data_lid(root_path, "[lid_driven_cavity]_[Re=9000]_[0,50,0.1]_v.txt")
+    
+    t = np.linspace(0, 50, 501).reshape(-1,1)
+    x = u[:, 0:1]
+    y = u[:, 1:2]
+    p = p[:, 2:]
+    u = u[:, 2:]
+    v = v[:, 2:]
+    print(x.shape, y.shape, p.shape, u.shape, v.shape)
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.scatter(x, y, s=0.1)
+    plt.show()
+
     return pinnstorch.data.PointCloudData(
-        spatial=[x, y], time=[t], solution={"u": exact_u, "v": exact_v, "p": exact_p}
+        spatial=[x, y], time=[t], solution={"u": u, "v": v, "p": p}
     )
+    
 
 
 def output_fn(outputs: Dict[str, torch.Tensor],
@@ -57,18 +80,31 @@ def pde_fn(outputs: Dict[str, torch.Tensor],
 
     p_x, p_y = pinnstorch.utils.gradient(outputs["p"], [x, y])
 
+    # outputs["f_u"] = (
+    #     u_t
+    #     + extra_variables["l1"] * (outputs["u"] * u_x + outputs["v"] * u_y)
+    #     + p_x   
+    #     - extra_variables["l2"] * (u_xx + u_yy)
+    # )
+
+    # outputs["f_v"] = (
+    #     v_t
+    #     + extra_variables["l1"] * (outputs["u"] * v_x + outputs["v"] * v_y)
+    #     + p_y
+    #     - extra_variables["l2"] * (v_xx + v_yy)
+    # )
     outputs["f_u"] = (
         u_t
-        + extra_variables["l1"] * (outputs["u"] * u_x + outputs["v"] * u_y)
-        + p_x
-        - extra_variables["l2"] * (u_xx + u_yy)
+        + (outputs["u"] * u_x + outputs["v"] * u_y)
+        + p_x   
+        - 1/9000 * (u_xx + u_yy)
     )
 
     outputs["f_v"] = (
         v_t
-        + extra_variables["l1"] * (outputs["u"] * v_x + outputs["v"] * v_y)
+        + (outputs["u"] * v_x + outputs["v"] * v_y)
         + p_y
-        - extra_variables["l2"] * (v_xx + v_yy)
+        - 1/9000 * (v_xx + v_yy)
     )
 
     return outputs
